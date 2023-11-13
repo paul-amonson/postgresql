@@ -21,6 +21,17 @@
 
 #include "port/pg_bitutils.h"
 
+#if (defined(__linux__) || defined(__linux) || defined(linux)) && defined(__x86_64) && AVX512_POPCNT
+#define NEED_AVX512_POPCNTDQ 1
+//#define AVX512F 1
+
+#include <immintrin.h>
+
+uint64 popcount_512_impl_unaligned(const char *buf, int bytes);
+#endif
+
+uint64 popcount_64_impl(const char *buf, int bytes);
+uint64 popcount_impl(const char *buf, int bytes);
 
 /*
  * Array giving the position of the left-most set bit for each possible
@@ -288,6 +299,15 @@ pg_popcount64(uint64 word)
 
 #endif							/* !TRY_POPCNT_FAST */
 
+inline uint64
+pg_popcnt_software(const char *buf, int bytes)
+{
+	uint64 popcnt = 0;
+	while (bytes--)
+		popcnt += pg_number_of_ones[(unsigned char)*buf++];
+	return popcnt;
+}
+
 /*
  * pg_popcount
  *		Returns the number of 1-bits in buf
@@ -295,41 +315,65 @@ pg_popcount64(uint64 word)
 uint64
 pg_popcount(const char *buf, int bytes)
 {
-	uint64		popcnt = 0;
-
 #if SIZEOF_VOID_P >= 8
 	/* Process in 64-bit chunks if the buffer is aligned. */
 	if (buf == (const char *) TYPEALIGN(8, buf))
-	{
-		const uint64 *words = (const uint64 *) buf;
-
-		while (bytes >= 8)
-		{
-			popcnt += pg_popcount64(*words++);
-			bytes -= 8;
-		}
-
-		buf = (const char *) words;
-	}
+		return popcount_impl(buf, bytes);
+	else /* If not aligned use software only */
+		return pg_popcnt_software(buf, bytes);
 #else
-	/* Process in 32-bit chunks if the buffer is aligned. */
-	if (buf == (const char *) TYPEALIGN(4, buf))
+	return pg_popcnt_software(buf, bytes);
+#endif
+}
+
+uint64
+popcount_64_impl(const char *buf, int bytes)
+{
+	uint64 popcnt = 0;
+
+	while (bytes >= sizeof(uint64))
 	{
-		const uint32 *words = (const uint32 *) buf;
-
-		while (bytes >= 4)
-		{
-			popcnt += pg_popcount32(*words++);
-			bytes -= 4;
-		}
-
-		buf = (const char *) words;
+		popcnt += pg_popcount64(*((const uint64 *)buf));
+		buf += sizeof(uint64);
+		bytes -= sizeof(uint64);
 	}
+	
+	// Process remaining bytes...
+	popcnt += pg_popcnt_software(buf, bytes);
+	return popcnt;
+}
+
+#if defined(NEED_AVX512_POPCNTDQ)
+
+#define LINE_SIZE_LOCAL 8192
+
+uint64
+popcount_512_impl_unaligned(const char *buf, int bytes)
+{
+	uint64 popcnt = 0;
+	uint64 remainder = ((uint64)buf) % 64;
+	popcnt += popcount_64_impl(buf, remainder);
+	bytes -= remainder;
+	buf += remainder;
+
+	__m512i *vectors = (__m512i *)buf;
+	while (bytes >= 64) {
+		popcnt += (uint64)_mm512_reduce_add_epi64(_mm512_popcnt_epi64(*(vectors++)));
+		bytes -= 64;
+	}
+	buf = (const char *)vectors;
+
+	popcnt += popcount_64_impl(buf, bytes);
+	return popcnt;
+}
 #endif
 
-	/* Process any remaining bytes */
-	while (bytes--)
-		popcnt += pg_number_of_ones[(unsigned char) *buf++];
-
-	return popcnt;
+inline uint64
+popcount_impl(const char *buf, int bytes)
+{
+#if defined(NEED_AVX512_POPCNTDQ)
+	return popcount_512_impl_unaligned(buf, bytes);
+#else
+	return popcount_64_impl(buf, bytes);
+#endif
 }

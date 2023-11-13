@@ -93,6 +93,7 @@ pg_crc32c_sse42_srv.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8_shlib.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8_srv.o: CFLAGS+=$(CFLAGS_CRC)
+pg_bitutils.o: CFLAGS+=$(CFLAGS_AVX512)
 
 #
 # Shared library versions of object files
