@@ -21,14 +21,19 @@
 
 #include "port/pg_bitutils.h"
 
-#if (defined(__linux__) || defined(__linux) || defined(linux)) && defined(__x86_64) && AVX512_POPCNT
+#if (defined(__linux__) || defined(__linux) || defined(linux))
+#if defined(__x86_64) && defined(AVX512_POPCNT)
+/* Set macro for AVX-512 inclusion in the binary. */
 #define NEED_AVX512_POPCNTDQ 1
 
 #include <immintrin.h>
 
+/* Forward ref for AVX-512 private implementation */
 uint64 popcount_512_impl_unaligned(const char *buf, int bytes);
-#endif
+#endif /* Platform and Flag for AVX-512 */
+#endif /* Linux */
 
+/* Forward refs for private refactor of 64-bit implementation */
 uint64 popcount_64_impl(const char *buf, int bytes);
 uint64 popcount_impl(const char *buf, int bytes);
 
@@ -313,7 +318,7 @@ pg_popcnt_software(const char *buf, int bytes)
  */
 uint64
 pg_popcount(const char *buf, int bytes)
-{ // Refatored for reuse in AVX-512 implementaitons.
+{ /* Refatored for reuse in AVX-512 implementaitons. */
 #if SIZEOF_VOID_P >= 8
 	/* Process in 64-bit chunks if the buffer is aligned. */
 	if (buf == (const char *) TYPEALIGN(8, buf))
@@ -326,7 +331,8 @@ pg_popcount(const char *buf, int bytes)
 }
 
 /*
- * Refatored 64-bit algorithm using the refactored software algorithm for trailing bytes.
+ * Refatored 64-bit algorithm using the refactored software
+ * algorithm for trailing bytes.
  */
 uint64
 popcount_64_impl(const char *buf, int bytes)
@@ -340,7 +346,7 @@ popcount_64_impl(const char *buf, int bytes)
 		bytes -= sizeof(uint64);
 	}
 	
-	// Process remaining bytes...
+	/* Process remaining bytes... */
 	popcnt += pg_popcnt_software(buf, bytes);
 	return popcnt;
 }
@@ -349,8 +355,8 @@ popcount_64_impl(const char *buf, int bytes)
 
 #define LINE_SIZE_LOCAL 8192
 /*
- * AVX-512 implementation for popcount using 64-bit algorithm for 512-bit unaligned
- * leading and trailing portions.
+ * AVX-512 implementation for popcount using 64-bit algorithm
+ * for 512-bit unaligned leading and trailing portions.
  */
 uint64
 popcount_512_impl_unaligned(const char *buf, int bytes)
@@ -363,7 +369,8 @@ popcount_512_impl_unaligned(const char *buf, int bytes)
 
 	__m512i *vectors = (__m512i *)buf;
 	while (bytes >= 64) {
-		popcnt += (uint64)_mm512_reduce_add_epi64(_mm512_popcnt_epi64(*(vectors++)));
+		popcnt += (uint64)_mm512_reduce_add_epi64(
+			_mm512_popcnt_epi64(*(vectors++)));
 		bytes -= 64;
 	}
 	buf = (const char *)vectors;
@@ -374,14 +381,20 @@ popcount_512_impl_unaligned(const char *buf, int bytes)
 #endif
 
 /*
- * Called by pg_popcount when architecture is 64-bit and aligned. Will default
- * to the original 64-bit algorithm if conditions for AVX-512 are not met.
+ * Called by pg_popcount when architecture is 64-bit and aligned.
+ * Will default to the original 64-bit algorithm if conditions for AVX-512
+ * are not met.
  */
 inline uint64
 popcount_impl(const char *buf, int bytes)
 {
 #if defined(NEED_AVX512_POPCNTDQ)
-	return popcount_512_impl_unaligned(buf, bytes);
+	if(bytes >= 25165824) /* 24MiB */
+		/* After testing, this is the threshhold where benifits for AVX-512
+		   starts. */
+		return popcount_512_impl_unaligned(buf, bytes);
+	else
+		return popcount_64_impl(buf, bytes);
 #else
 	return popcount_64_impl(buf, bytes);
 #endif
