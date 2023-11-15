@@ -316,7 +316,7 @@ pg_popcnt_software(const char *buf, int bytes)
  * pg_popcount
  *		Returns the number of 1-bits in buf
  */
-uint64
+inline uint64
 pg_popcount(const char *buf, int bytes)
 { /* Refatored for reuse in AVX-512 implementaitons. */
 #if SIZEOF_VOID_P >= 8
@@ -334,7 +334,7 @@ pg_popcount(const char *buf, int bytes)
  * Refatored 64-bit algorithm using the refactored software
  * algorithm for trailing bytes.
  */
-uint64
+inline uint64
 popcount_64_impl(const char *buf, int bytes)
 {
 	uint64 popcnt = 0;
@@ -358,7 +358,7 @@ popcount_64_impl(const char *buf, int bytes)
  * AVX-512 implementation for popcount using 64-bit algorithm
  * for 512-bit unaligned leading and trailing portions.
  */
-uint64
+inline uint64
 popcount_512_impl_unaligned(const char *buf, int bytes)
 {
 	uint64 popcnt = 0;
