@@ -24,10 +24,6 @@
 #include <intrin.h>
 #endif
 
-#ifdef _MSC_VER
-#define __asm__ __asm
-#endif
-
 static bool pg_popcount_available(void);
 int pg_popcount32_choose(uint32 word);
 int pg_popcount64_choose(uint64 word);
@@ -93,12 +89,18 @@ pg_popcount512_available(void)
          * https://www.intel.com/content/www/us/en/content-details/671488/intel-64-and-ia-32-architectures-optimization-reference-manual-volume-1.html
          */
         uint64 xcr = 0;
+#ifdef _MSC_VER
+        uint64 highlow = _xgetbv(xcr);
+
+        return (highlow & 0xE0) != 0;
+#else
         uint32 high;
         uint32 low;
-
+        
         __asm__ __volatile__("xgetbv\t\n" : "=a"(low), "=d"(high) : "c"(xcr));
         return (low & 0xE0) != 0;
-    }  /* POPCNT 512 */
+#endif
+    } /* POPCNT 512 */
     return false;
 }
 

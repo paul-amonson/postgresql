@@ -2201,6 +2201,7 @@ if host_cpu == 'x86_64'
               args: test_c_args + ['-mavx512vpopcntdq', '-mavx512f'])
     have_avx512_popcnt = true
     cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cdata.set('HAVE__AVX512_POPCNT', 1)
     if host_system == 'windows'
       cflags_avx512_popcnt = ['/arch:AVX512']
     else
@@ -2208,7 +2209,7 @@ if host_cpu == 'x86_64'
     endif
   else
     have_avx512_popcnt = false
-    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 0)
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
     cflags_avx512_popcnt = []
   endif # compile/link test
 endif # host_cpu check

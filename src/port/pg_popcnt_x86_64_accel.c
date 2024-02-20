@@ -18,10 +18,6 @@
 
 #include "port/pg_bitutils.h"
 
-#ifdef _MSC_VER
-#define __asm__ __asm
-#endif
-
 #ifdef TRY_POPCNT_FAST
 extern const uint8 pg_number_of_ones[256];
 extern uint64 pg_popcount_slow(const char *buf, int bytes);
@@ -70,7 +66,7 @@ pg_popcount64_fast(uint64 word)
 uint64
 pg_popcount512_fast(const char *buf, int bytes)
 {
-#if defined(HAVE__IMMINTRIN) && USE_AVX512_POPCNT_WITH_RUNTIME_CHECK == 1
+#if defined(HAVE__IMMINTRIN) && HAVE__AVX512_POPCNT == 1
     uint64 popcnt = 0;
     __m512i accumulator = _mm512_setzero_si512();
 
