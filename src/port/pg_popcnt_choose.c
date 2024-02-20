@@ -24,6 +24,10 @@
 #include <intrin.h>
 #endif
 
+#ifdef _MSC_VER
+#define __asm__ __asm
+#endif
+
 static bool pg_popcount_available(void);
 int pg_popcount32_choose(uint32 word);
 int pg_popcount64_choose(uint64 word);

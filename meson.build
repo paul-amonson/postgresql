@@ -2208,7 +2208,7 @@ if host_cpu == 'x86_64'
     endif
   else
     have_avx512_popcnt = false
-    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 0)
     cflags_avx512_popcnt = []
   endif # compile/link test
 endif # host_cpu check
