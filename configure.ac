@@ -2068,6 +2068,18 @@ if test x"$pgac_cv__get_cpuid" = x"yes"; then
   AC_DEFINE(HAVE__GET_CPUID, 1, [Define to 1 if you have __get_cpuid.])
 fi
 
+# Check for x86 cpuid_count instruction
+AC_CACHE_CHECK([for __get_cpuid_count], [pgac_cv__get_cpuid_count],
+[AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <cpuid.h>],
+  [[unsigned int exx[4] = {0, 0, 0, 0};
+  __get_cpuid_count(7, 0, &exx[0], &exx[1], &exx[2], &exx[3]);
+  ]])],
+  [pgac_cv__get_cpuid_count="yes"],
+  [pgac_cv__get_cpuid_count="no"])])
+if test x"$pgac_cv__get_cpuid_count" = x"yes"; then
+  AC_DEFINE(HAVE__GET_CPUID_COUNT, 1, [Define to 1 if you have __get_cpuid.])
+fi
+
 AC_CACHE_CHECK([for __cpuid], [pgac_cv__cpuid],
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <intrin.h>],
   [[unsigned int exx[4] = {0, 0, 0, 0};
@@ -2078,6 +2090,36 @@ AC_CACHE_CHECK([for __cpuid], [pgac_cv__cpuid],
 if test x"$pgac_cv__cpuid" = x"yes"; then
   AC_DEFINE(HAVE__CPUID, 1, [Define to 1 if you have __cpuid.])
 fi
+
+AC_CACHE_CHECK([for __cpuidex], [pgac_cv__cpuidex],
+[AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <intrin.h>],
+  [[unsigned int exx[4] = {0, 0, 0, 0};
+  __get_cpuidex(exx[0], 7, 0);
+  ]])],
+  [pgac_cv__cpuidex="yes"],
+  [pgac_cv__cpuidex="no"])])
+if test x"$pgac_cv__cpuidex" = x"yes"; then
+  AC_DEFINE(HAVE__CPUIDEX, 1, [Define to 1 if you have __cpuidex.])
+fi
+
+AC_CACHE_CHECK([for __immintrin], [pgac_cv__immintrin],
+[AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <immintrin.h>],
+  [[/* Don't exclude code so added return. */
+    return 1701;
+  ]])],
+  [pgac_cv__immintrin="yes"],
+  [pgac_cv__immintrin="no"])])
+if test x"$pgac_cv__immintrin" = x"yes"; then
+  AC_DEFINE(HAVE__IMMINTRIN, 1, [Define to 1 if you have immintrin.])
+fi
+
+# Check for Intel AVX512 intrinsics to do POPCNT calculations.
+#
+PGAC_AVX512_POPCNT_INTRINSICS([])
+if test x"$pgac_avx512_popcnt_intrinsics" != x"yes"; then
+  PGAC_AVX512_POPCNT_INTRINSICS([-mavx512vpopcntdq -mavx512f])
+fi
+AC_SUBST(CFLAGS_AVX512_POPCNT)
 
 # Check for Intel SSE 4.2 intrinsics to do CRC calculations.
 #

@@ -100,6 +100,7 @@ pgxs_kv = {
     ' '.join(cflags_no_decl_after_statement),
 
   'CFLAGS_CRC': ' '.join(cflags_crc),
+  'CFLAGS_AVX512_POPCNT': ' '.join(cflags_avx512_popcnt),
   'CFLAGS_UNROLL_LOOPS': ' '.join(unroll_loops_cflags),
   'CFLAGS_VECTORIZE': ' '.join(vectorize_cflags),
 

@@ -1773,6 +1773,37 @@ elif cc.links('''
 endif
 
 
+if cc.links('''
+    #include <cpuid.h>
+    int main(int arg, char **argv)
+    {
+        unsigned int exx[4] = {0, 0, 0, 0};
+        __get_cpuid_count(7, 0, &exx[0], &exx[1], &exx[2], &exx[3]);
+    }
+    ''', name: '__get_cpuid_count',
+    args: test_c_args)
+  cdata.set('HAVE__GET_CPUID_COUNT', 1)
+elif cc.links('''
+    #include <intrin.h>
+    int main(int arg, char **argv)
+    {
+        unsigned int exx[4] = {0, 0, 0, 0};
+        __cpuidex(exx, 7, 0);
+    }
+    ''', name: '__cpuidex',
+    args: test_c_args)
+  cdata.set('HAVE__CPUIDEX', 1)
+endif
+
+
+# Check for header immintrin.h
+if cc.has_header('immintrin.h',
+    include_directories: postgres_inc, args: test_c_args)
+  cdata.set('HAVE__IMMINTRIN', 1,
+            description: 'Define to 1 if you have the immintrin.h header file.')
+endif
+
+
 # Defend against clang being used on x86-32 without SSE2 enabled.  As current
 # versions of clang do not understand -fexcess-precision=standard, the use of
 # x87 floating point operations leads to problems like isinf possibly returning
@@ -2145,6 +2176,38 @@ elif host_cpu == 'ppc' or host_cpu == 'ppc64'
     endif
   endif
 endif
+
+###############################################################
+# AVX 512 POPCNT Intrinsic check
+###############################################################
+have_avx512_popcnt = false
+cflags_avx512_popcnt = []
+if host_cpu == 'x86_64'
+  prog = '''
+      #include <immintrin.h>
+      #include <stdint.h>
+      void main(void)
+      {
+        __m512i tmp __attribute__((aligned(64)));
+        __m512i input = _mm512_setzero_si512();
+        __m512i output = _mm512_popcnt_epi64(input);
+        uint64_t cnt = 999;
+        _mm512_store_si512(&tmp, output);
+        cnt = _mm512_reduce_add_epi64(tmp);
+        /* return computed value, to prevent the above being optimized away */
+        return cnt == 0;
+      }'''
+  if cc.links(prog, name: '_mm512_* methods with -mavx512vpopcntdq -mavx512f',
+              args: test_c_args + ['-mavx512vpopcntdq', '-mavx512f'])
+    have_avx512_popcnt = true
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cflags_avx512_popcnt = ['-mavx512vpopcntdq', '-mavx512f']
+  else
+    have_avx512_popcnt = false
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cflags_avx512_popcnt = []
+  endif # compile/link test
+endif # host_cpu check
 
 
 
