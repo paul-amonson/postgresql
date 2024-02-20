@@ -2183,6 +2183,10 @@ endif
 have_avx512_popcnt = false
 cflags_avx512_popcnt = []
 if host_cpu == 'x86_64'
+  test_flags = ['-mavx512vpopcntdq', '-mavx512f']
+  if host_system == 'windows'
+    test_flags = ['/arch:AVX512']
+  endif
   prog = '''
       #include <immintrin.h>
       #include <stdint.h>
@@ -2198,15 +2202,11 @@ if host_cpu == 'x86_64'
         return cnt == 0;
       }'''
   if cc.links(prog, name: '_mm512_* methods with -mavx512vpopcntdq -mavx512f',
-              args: test_c_args + ['-mavx512vpopcntdq', '-mavx512f'])
+              args: test_c_args + test_flags)
     have_avx512_popcnt = true
     cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
     cdata.set('HAVE__AVX512_POPCNT', 1)
-    if host_system == 'windows'
-      cflags_avx512_popcnt = ['/arch:AVX512']
-    else
-      cflags_avx512_popcnt = ['-mavx512vpopcntdq', '-mavx512f']
-    endif
+    cflags_avx512_popcnt = test_flags
   else
     have_avx512_popcnt = false
     cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
