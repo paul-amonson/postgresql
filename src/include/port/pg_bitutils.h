@@ -305,6 +305,11 @@ extern int	(*pg_popcount64) (uint64 word);
 
 extern uint64 (*pg_popcount)(const char *buf, int bytes);
 
+#ifdef _MSC_VER
+#pragma message ("*** TRY_POPCNT_FAST is true!!!")
+#else
+#warning "*** TRY_POPCNT_FAST is true!!!"
+#endif
 #else
 /* Use a portable implementation -- no need for a function pointer. */
 extern int	pg_popcount32(uint32 word);
@@ -312,6 +317,11 @@ extern int	pg_popcount64(uint64 word);
 
 /* Count the number of one-bits in a byte array */
 extern uint64 pg_popcount(const char *buf, int bytes);
+#ifdef _MSC_VER
+#pragma message("*** TRY_POPCNT_FAST is false!!!")
+#else
+#warning "*** TRY_POPCNT_FAST is false!!!"
+#endif
 
 #endif							/* TRY_POPCNT_FAST */
 
