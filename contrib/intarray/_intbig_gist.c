@@ -210,7 +210,7 @@ g_intbig_compress(PG_FUNCTION_ARGS)
 static int32
 sizebitvec(BITVECP sign, int siglen)
 {
-	return pg_popcount(sign, siglen);
+	return (int32)pg_popcount((const char*)sign, siglen);
 }
 
 static int
