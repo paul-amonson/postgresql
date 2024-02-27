@@ -297,13 +297,14 @@ pg_ceil_log2_64(uint64 num)
 #define TRY_POPCNT_FAST 1
 #endif
 #endif
-#undef TRY_POPCNT_FAST
+
 #ifdef TRY_POPCNT_FAST
 /* Attempt to use the POPCNT instruction, but perform a runtime check first */
 extern int	(*pg_popcount32) (uint32 word);
 extern int	(*pg_popcount64) (uint64 word);
 
-extern uint64 (*pg_popcount)(const char *buf, int bytes);
+//extern uint64 (*pg_popcount)(const char *buf, int bytes);
+extern uint64 pg_popcount(const char *buf, int bytes);
 
 #else
 /* Use a portable implementation -- no need for a function pointer. */
