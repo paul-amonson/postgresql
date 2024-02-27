@@ -107,7 +107,15 @@ extern uint64 pg_popcount_choose(const char *buf, int bytes);
 
 int			(*pg_popcount32) (uint32 word) = pg_popcount32_choose;
 int			(*pg_popcount64) (uint64 word) = pg_popcount64_choose;
+#if defined(_MSC_VER)
+uint64 (*pg_popcount_indirect)(const char *buf, int bytes) = pg_popcount_choose;
+uint64 pg_popcount(const char *buf, int bytes)
+{
+	return pg_popcount_indirect(buf, bytes);
+}
+#else
 uint64		(*pg_popcount) (const char *buf, int bytes) = pg_popcount_choose;
+#endif
 #else								/* TRY_POPCNT_FAST */
 uint64 pg_popcount(const char *buf, int bytes);
 #endif 								/* TRY_POPCNT_FAST */

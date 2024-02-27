@@ -35,6 +35,7 @@ extern int pg_popcount32_slow(uint32 word);
 extern int pg_popcount64_slow(uint64 word);
 extern uint64 pg_popcount512_fast(const char *buf, int bytes);
 extern uint64 pg_popcount_slow(const char *buf, int bytes);
+extern uint64 (*pg_popcount_indirect)(const char *buf, int bytes);
 
 extern int (*pg_popcount32)(uint32 word);
 extern int (*pg_popcount64)(uint64 word);
@@ -110,15 +111,23 @@ pg_popcount512_available(void)
  * the function pointers so that subsequent calls are routed directly to
  * the chosen implementation.
  */
-
 static void set_up_function_pointers()
 {
-    if (pg_popcount512_available()) {
+    if (pg_popcount512_available())
+    {
+#if defined(_MSC_VER)
+        pg_popcount_indirect = pg_popcount512_fast;
+#else
         pg_popcount = pg_popcount512_fast;
+#endif
     }
     else
     {
-         pg_popcount = pg_popcount_slow;
+#if defined(_MSC_VER)
+        pg_popcount_indirect = pg_popcount_slow;
+#else
+        pg_popcount = pg_popcount_slow;
+#endif
     }
     if (pg_popcount_available())
     {
@@ -149,7 +158,11 @@ uint64
 pg_popcount_choose(const char *buf, int bytes)
 {
     set_up_function_pointers();
+#if defined(_MSC_VER)
+    return pg_popcount_indirect(buf, bytes);
+#else
     return pg_popcount(buf, bytes);
+#endif
 }
 
 #endif                                          /* TRY_POPCNT_FAST */

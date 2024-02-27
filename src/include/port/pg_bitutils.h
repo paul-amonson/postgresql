@@ -303,8 +303,12 @@ pg_ceil_log2_64(uint64 num)
 extern int	(*pg_popcount32) (uint32 word);
 extern int	(*pg_popcount64) (uint64 word);
 
-//extern uint64 (*pg_popcount)(const char *buf, int bytes);
+#if defined(_MSC_VER)
 extern uint64 pg_popcount(const char *buf, int bytes);
+extern uint64 (*pg_popcount_indirect)(const char *buf, int bytes);
+#else
+extern uint64 (*pg_popcount)(const char *buf, int bytes);
+#endif
 
 #else
 /* Use a portable implementation -- no need for a function pointer. */
