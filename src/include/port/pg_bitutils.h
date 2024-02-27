@@ -297,7 +297,7 @@ pg_ceil_log2_64(uint64 num)
 #define TRY_POPCNT_FAST 1
 #endif
 #endif
-
+#undef TRY_POPCNT_FAST
 #ifdef TRY_POPCNT_FAST
 /* Attempt to use the POPCNT instruction, but perform a runtime check first */
 extern int	(*pg_popcount32) (uint32 word);
