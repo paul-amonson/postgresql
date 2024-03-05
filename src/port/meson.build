@@ -7,6 +7,7 @@ pgport_sources = [
   'noblock.c',
   'path.c',
   'pg_bitutils.c',
+  'pg_popcnt_choose.c',
   'pg_strong_random.c',
   'pgcheckdir.c',
   'pgmkdirp.c',
@@ -84,6 +85,7 @@ replace_funcs_pos = [
   ['pg_crc32c_sse42', 'USE_SSE42_CRC32C_WITH_RUNTIME_CHECK', 'crc'],
   ['pg_crc32c_sse42_choose', 'USE_SSE42_CRC32C_WITH_RUNTIME_CHECK'],
   ['pg_crc32c_sb8', 'USE_SSE42_CRC32C_WITH_RUNTIME_CHECK'],
+  ['pg_popcnt_x86_64_accel', 'USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 'avx512'],
 
   # arm / aarch64
   ['pg_crc32c_armv8', 'USE_ARMV8_CRC32C'],
@@ -98,8 +100,8 @@ replace_funcs_pos = [
   ['pg_crc32c_sb8', 'USE_SLICING_BY_8_CRC32C'],
 ]
 
-pgport_cflags = {'crc': cflags_crc}
-pgport_sources_cflags = {'crc': []}
+pgport_cflags = {'crc': cflags_crc, 'avx512': cflags_avx512_popcnt}
+pgport_sources_cflags = {'crc': [], 'avx512': []}
 
 foreach f : replace_funcs_neg
   func = f.get(0)

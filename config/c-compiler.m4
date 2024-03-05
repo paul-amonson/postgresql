@@ -694,3 +694,36 @@ if test x"$Ac_cachevar" = x"yes"; then
 fi
 undefine([Ac_cachevar])dnl
 ])# PGAC_LOONGARCH_CRC32C_INTRINSICS
+
+# PGAC_AVX512_POPCNT_INTRINSICS
+# ---------------------------
+# Check if the compiler supports the x86_64 AVX512 POPCNT instructions using
+# intrinsics used in CPUID features AVX512F and AVX512VPOPCNTDQ.
+#
+# Optional compiler flags can be passed as argument (e.g. -mavx512vpopcntdq).
+# If the intrinsics are supported then pgac_avx512_popcnt_intrinsics and
+# CFLAGS_AVX512_POPCNT are set.
+AC_DEFUN([PGAC_AVX512_POPCNT_INTRINSICS],
+[define([Ac_cachevar], [AS_TR_SH([pgac_cv_avx512_popcnt_intrinsics_$1])])dnl
+AC_CACHE_CHECK([for _mm512_popcnt_epi64 with CFLAGS=$1], [Ac_cachevar],
+[pgac_save_CFLAGS=$CFLAGS
+CFLAGS="$pgac_save_CFLAGS $1"
+AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <immintrin.h>
+#include <stdint.h>],
+  [__m512i tmp __attribute__((aligned(64)));
+   __m512i input = _mm512_setzero_si512();
+   __m512i output = _mm512_popcnt_epi64(input);
+   uint64_t cnt = 999;
+   _mm512_store_si512(&tmp, output);
+   cnt = _mm512_reduce_add_epi64(tmp);
+   /* return computed value, to prevent the above being optimized away */
+   return cnt == 0;])],
+  [Ac_cachevar=yes],
+  [Ac_cachevar=no])
+CFLAGS="$pgac_save_CFLAGS"])
+if test x"$Ac_cachevar" = x"yes"; then
+  CFLAGS_AVX512_POPCNT="$1"
+  pgac_avx512_popcnt_intrinsics=yes
+fi
+undefine([Ac_cachevar])dnl
+])# PGAC_AVX512_POPCNT_INTRINSICS
