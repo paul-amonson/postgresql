@@ -12,13 +12,6 @@
  */
 #include "c.h"
 
-#ifdef HAVE__GET_CPUID
-#include <cpuid.h>
-#endif
-#ifdef HAVE__CPUID
-#include <intrin.h>
-#endif
-
 #include "port/pg_bitutils.h"
 
 
@@ -103,123 +96,14 @@ const uint8 pg_number_of_ones[256] = {
 	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
 };
 
-static int	pg_popcount32_slow(uint32 word);
-static int	pg_popcount64_slow(uint64 word);
-
-#ifdef TRY_POPCNT_FAST
-static bool pg_popcount_available(void);
-static int	pg_popcount32_choose(uint32 word);
-static int	pg_popcount64_choose(uint64 word);
-static int	pg_popcount32_fast(uint32 word);
-static int	pg_popcount64_fast(uint64 word);
-
-int			(*pg_popcount32) (uint32 word) = pg_popcount32_choose;
-int			(*pg_popcount64) (uint64 word) = pg_popcount64_choose;
-#endif							/* TRY_POPCNT_FAST */
-
-#ifdef TRY_POPCNT_FAST
-
-/*
- * Return true if CPUID indicates that the POPCNT instruction is available.
- */
-static bool
-pg_popcount_available(void)
-{
-	unsigned int exx[4] = {0, 0, 0, 0};
-
-#if defined(HAVE__GET_CPUID)
-	__get_cpuid(1, &exx[0], &exx[1], &exx[2], &exx[3]);
-#elif defined(HAVE__CPUID)
-	__cpuid(exx, 1);
-#else
-#error cpuid instruction not available
-#endif
-
-	return (exx[2] & (1 << 23)) != 0;	/* POPCNT */
-}
-
-/*
- * These functions get called on the first call to pg_popcount32 etc.
- * They detect whether we can use the asm implementations, and replace
- * the function pointers so that subsequent calls are routed directly to
- * the chosen implementation.
- */
-static int
-pg_popcount32_choose(uint32 word)
-{
-	if (pg_popcount_available())
-	{
-		pg_popcount32 = pg_popcount32_fast;
-		pg_popcount64 = pg_popcount64_fast;
-	}
-	else
-	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-	}
-
-	return pg_popcount32(word);
-}
-
-static int
-pg_popcount64_choose(uint64 word)
-{
-	if (pg_popcount_available())
-	{
-		pg_popcount32 = pg_popcount32_fast;
-		pg_popcount64 = pg_popcount64_fast;
-	}
-	else
-	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-	}
-
-	return pg_popcount64(word);
-}
-
-/*
- * pg_popcount32_fast
- *		Return the number of 1 bits set in word
- */
-static int
-pg_popcount32_fast(uint32 word)
-{
-#ifdef _MSC_VER
-	return __popcnt(word);
-#else
-	uint32		res;
-
-__asm__ __volatile__(" popcntl %1,%0\n":"=q"(res):"rm"(word):"cc");
-	return (int) res;
-#endif
-}
-
-/*
- * pg_popcount64_fast
- *		Return the number of 1 bits set in word
- */
-static int
-pg_popcount64_fast(uint64 word)
-{
-#ifdef _MSC_VER
-	return __popcnt64(word);
-#else
-	uint64		res;
-
-__asm__ __volatile__(" popcntq %1,%0\n":"=q"(res):"rm"(word):"cc");
-	return (int) res;
-#endif
-}
-
-#endif							/* TRY_POPCNT_FAST */
-
+extern int	pg_popcount32_slow(uint32 word);
+extern int	pg_popcount64_slow(uint64 word);
 
 /*
  * pg_popcount32_slow
  *		Return the number of 1 bits set in word
  */
-static int
+int
 pg_popcount32_slow(uint32 word)
 {
 #ifdef HAVE__BUILTIN_POPCOUNT
@@ -241,7 +125,7 @@ pg_popcount32_slow(uint32 word)
  * pg_popcount64_slow
  *		Return the number of 1 bits set in word
  */
-static int
+int
 pg_popcount64_slow(uint64 word)
 {
 #ifdef HAVE__BUILTIN_POPCOUNT
@@ -289,6 +173,17 @@ pg_popcount64(uint64 word)
 #endif							/* !TRY_POPCNT_FAST */
 
 /*
+ * pg_remaining_bytes
+ * 		Adds the raw byte-by-byte popcnt to result (inline optimized)
+ */
+inline void
+pg_remaining_bytes(const char* buf, int bytes, uint64* result)
+{
+	while (bytes--)
+		(*result) += pg_number_of_ones[(unsigned char) *buf++];
+}
+
+/*
  * pg_popcount
  *		Returns the number of 1-bits in buf
  */
@@ -328,8 +223,7 @@ pg_popcount(const char *buf, int bytes)
 #endif
 
 	/* Process any remaining bytes */
-	while (bytes--)
-		popcnt += pg_number_of_ones[(unsigned char) *buf++];
+	pg_remaining_bytes(buf, bytes, &popcnt);
 
 	return popcnt;
 }
