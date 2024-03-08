@@ -173,17 +173,6 @@ pg_popcount64(uint64 word)
 #endif							/* !TRY_POPCNT_FAST */
 
 /*
- * pg_remaining_bytes
- * 		Adds the raw byte-by-byte popcnt to result (inline optimized)
- */
-inline void
-pg_remaining_bytes(const char* buf, int bytes, uint64* result)
-{
-	while (bytes--)
-		(*result) += pg_number_of_ones[(unsigned char) *buf++];
-}
-
-/*
  * pg_popcount
  *		Returns the number of 1-bits in buf
  */
@@ -223,7 +212,8 @@ pg_popcount(const char *buf, int bytes)
 #endif
 
 	/* Process any remaining bytes */
-	pg_remaining_bytes(buf, bytes, &popcnt);
+	while (bytes--)
+		popcnt += pg_number_of_ones[(unsigned char) *buf++];
 
 	return popcnt;
 }
