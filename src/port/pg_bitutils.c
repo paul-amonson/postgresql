@@ -98,6 +98,7 @@ const uint8 pg_number_of_ones[256] = {
 
 extern int	pg_popcount32_slow(uint32 word);
 extern int	pg_popcount64_slow(uint64 word);
+extern uint64 pg_popcount_slow(const char *buf, int bytes);
 
 /*
  * pg_popcount32_slow
@@ -170,6 +171,12 @@ pg_popcount64(uint64 word)
 	return pg_popcount64_slow(word);
 }
 
+uint64
+pg_popcount(const char *buf, int bytes)
+{
+	return pg_popcount_slow(buf, bytes);
+}
+
 #endif							/* !TRY_POPCNT_FAST */
 
 /*
@@ -177,7 +184,7 @@ pg_popcount64(uint64 word)
  *		Returns the number of 1-bits in buf
  */
 uint64
-pg_popcount(const char *buf, int bytes)
+pg_popcount_slow(const char *buf, int bytes)
 {
 	uint64		popcnt = 0;
 

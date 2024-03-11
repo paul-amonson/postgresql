@@ -555,6 +555,15 @@
 /* Define to 1 if you have __cpuid. */
 #undef HAVE__CPUID
 
+/* Define to 1 if you have __get_cpuid_count. */
+#undef HAVE__GET_CPUID_COUNT
+
+/* Define to 1 if you have  immintrin. */
+#undef HAVE__IMMINTRIN
+
+/* Define to 1 if you have AVX512. */
+#undef HAVE__AVX512_POPCNT
+
 /* Define to 1 if you have __get_cpuid. */
 #undef HAVE__GET_CPUID
 

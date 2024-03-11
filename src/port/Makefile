@@ -89,6 +89,11 @@ pg_crc32c_sse42.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_sse42_shlib.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_sse42_srv.o: CFLAGS+=$(CFLAGS_CRC)
 
+# Newer Intel processors can use AVX-512 POPCNT Capabilities (01/30/2024)
+pg_popcnt_x86_64_accel.o: CFLAGS+=$(CFLAGS_AVX512_POPCNT)
+pg_popcnt_x86_64_accel_shlib.o: CFLAGS+=$(CFLAGS_AVX512_POPCNT)
+pg_popcnt_x86_64_accel_srv.o: CFLAGS+=$(CFLAGS_AVX512_POPCNT)
+
 # all versions of pg_crc32c_armv8.o need CFLAGS_CRC
 pg_crc32c_armv8.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8_shlib.o: CFLAGS+=$(CFLAGS_CRC)
