@@ -67,8 +67,7 @@ pg_popcount_available(void)
  * the function pointers so that subsequent calls are routed directly to
  * the chosen implementation.
  */
-static int
-pg_popcount32_choose(uint32 word)
+static void setup_function_pointers()
 {
 	if (pg_popcount_available())
 	{
@@ -80,24 +79,19 @@ pg_popcount32_choose(uint32 word)
 		pg_popcount32 = pg_popcount32_slow;
 		pg_popcount64 = pg_popcount64_slow;
 	}
+}
 
+static int
+pg_popcount32_choose(uint32 word)
+{
+	setup_function_pointers();
 	return pg_popcount32(word);
 }
 
 static int
 pg_popcount64_choose(uint64 word)
 {
-	if (pg_popcount_available())
-	{
-		pg_popcount32 = pg_popcount32_fast;
-		pg_popcount64 = pg_popcount64_fast;
-	}
-	else
-	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-	}
-
+	setup_function_pointers();
 	return pg_popcount64(word);
 }
 #endif							/* TRY_POPCNT_FAST */
