@@ -66,9 +66,9 @@ __asm__ __volatile__(" popcntq %1,%0\n":"=q"(res):"rm"(word):"cc");
 uint64
 pg_popcount_fast(const char *buf, int bytes)
 {
-#if defined(HAVE__IMMINTRIN) && HAVE__AVX512_POPCNT == 1
     uint64 popcnt = 0;
-    __m512i accumulator = _mm512_setzero_si512();
+ #if defined(HAVE__IMMINTRIN) && HAVE__AVX512_POPCNT == 1
+   __m512i accumulator = _mm512_setzero_si512();
 
     while (bytes >= 64)
     {
