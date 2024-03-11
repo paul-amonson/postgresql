@@ -558,6 +558,9 @@
 /* Define to 1 if you have __get_cpuid_count. */
 #undef HAVE__GET_CPUID_COUNT
 
+/* Define to 1 if you have __get_cpuidex. */
+#undef HAVE__GET_CPUIDEX
+
 /* Define to 1 if you have  immintrin. */
 #undef HAVE__IMMINTRIN
 

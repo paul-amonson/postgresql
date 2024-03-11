@@ -81,13 +81,9 @@ pg_popcount_fast(const char *buf, int bytes)
     }
 
     popcnt = _mm512_reduce_add_epi64(accumulator);
+#endif 				/* defined(HAVE__IMMINTRIN) && HAVE__AVX512_POPCNT == 1 */
 
     /* Process any remaining bytes */
-    while (bytes--)
-        popcnt += pg_number_of_ones[(unsigned char)*buf++];
-    return popcnt;
-#else
-    return pg_popcount_slow(buf, bytes);
-#endif /* USE_AVX512_CODE */
+    return popcnt + pg_popcount_slow(buf, bytes);
 }
 #endif                              /* TRY_POPCNT_FAST */
