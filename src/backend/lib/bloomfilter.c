@@ -187,7 +187,7 @@ double
 bloom_prop_bits_set(bloom_filter *filter)
 {
 	int			bitset_bytes = filter->m / BITS_PER_BYTE;
-	uint64		bits_set = pg_popcount((char *) filter->bitset, bitset_bytes);
+	uint64		bits_set = PG_POPCOUNT((char *) filter->bitset, bitset_bytes);
 
 	return bits_set / (double) filter->m;
 }

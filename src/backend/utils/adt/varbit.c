@@ -1212,7 +1212,7 @@ bit_bit_count(PG_FUNCTION_ARGS)
 {
 	VarBit	   *arg = PG_GETARG_VARBIT_P(0);
 
-	PG_RETURN_INT64(pg_popcount((char *) VARBITS(arg), VARBITBYTES(arg)));
+	PG_RETURN_INT64(PG_POPCOUNT((char *) VARBITS(arg), VARBITBYTES(arg)));
 }
 
 /*

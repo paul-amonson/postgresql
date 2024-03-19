@@ -527,8 +527,8 @@ heap_tuple_infomask_flags(PG_FUNCTION_ARGS)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	bitcnt = pg_popcount((const char *) &t_infomask, sizeof(uint16)) +
-		pg_popcount((const char *) &t_infomask2, sizeof(uint16));
+	bitcnt = PG_POPCOUNT((const char *) &t_infomask, sizeof(uint16)) +
+		PG_POPCOUNT((const char *) &t_infomask2, sizeof(uint16));
 
 	/* If no flags, return a set of empty arrays */
 	if (bitcnt <= 0)

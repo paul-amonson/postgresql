@@ -489,7 +489,7 @@ gtsvector_same(PG_FUNCTION_ARGS)
 static int32
 sizebitvec(BITVECP sign, int siglen)
 {
-	return pg_popcount(sign, siglen);
+	return PG_POPCOUNT(sign, siglen);
 }
 
 static int

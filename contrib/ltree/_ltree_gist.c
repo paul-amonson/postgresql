@@ -180,7 +180,7 @@ _ltree_union(PG_FUNCTION_ARGS)
 static int32
 sizebitvec(BITVECP sign, int siglen)
 {
-	return pg_popcount((const char *) sign, siglen);
+	return PG_POPCOUNT((const char *) sign, siglen);
 }
 
 static int

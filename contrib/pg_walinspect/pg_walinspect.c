@@ -303,7 +303,7 @@ GetWALBlockInfo(FunctionCallInfo fcinfo, XLogReaderState *record,
 			block_fpi_len = blk->bimg_len;
 
 			/* Construct and save block_fpi_info */
-			bitcnt = pg_popcount((const char *) &blk->bimg_info,
+			bitcnt = PG_POPCOUNT((const char *) &blk->bimg_info,
 								 sizeof(uint8));
 			flags = (Datum *) palloc0(sizeof(Datum) * bitcnt);
 			if ((blk->bimg_info & BKPIMAGE_HAS_HOLE) != 0)
