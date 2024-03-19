@@ -300,16 +300,23 @@ pg_ceil_log2_64(uint64 num)
 
 #ifdef TRY_POPCNT_FAST
 /* Attempt to use the POPCNT instruction, but perform a runtime check first */
+extern int	pg_popcount32_slow(uint32 word);
+extern int	pg_popcount64_slow(uint64 word);
+extern uint64 pg_popcount_slow(const char *buf, int bytes);
 extern PGDLLIMPORT int (*pg_popcount32) (uint32 word);
 extern PGDLLIMPORT int (*pg_popcount64) (uint64 word);
 extern PGDLLIMPORT uint64 (*pg_popcount) (const char *buf, int bytes);
-
+#define PG_POPCOUNT32(x) pg_popcount32(x)
+#define PG_POPCOUNT64(x) pg_popcount64(x)
+#define PG_POPCOUNT(x,y) pg_popcount(x,y)
 #else
 /* Use a portable implementation -- no need for a function pointer. */
-extern int	pg_popcount32(uint32 word);
-extern int	pg_popcount64(uint64 word);
-extern uint64 pg_popcount(const char *buf, int bytes);
-
+extern int	pg_popcount32_slow(uint32 word);
+extern int	pg_popcount64_slow(uint64 word);
+extern uint64 pg_popcount_slow(const char *buf, int bytes);
+#define PG_POPCOUNT32(x) pg_popcount32_slow(x)
+#define PG_POPCOUNT64(x) pg_popcount64_slow(x)
+#define PG_POPCOUNT(x,y) pg_popcount_slow(x,y)
 #endif							/* TRY_POPCNT_FAST */
 
 /*

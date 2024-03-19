@@ -77,11 +77,11 @@ typedef enum
 #if BITS_PER_BITMAPWORD == 32
 #define bmw_leftmost_one_pos(w)		pg_leftmost_one_pos32(w)
 #define bmw_rightmost_one_pos(w)	pg_rightmost_one_pos32(w)
-#define bmw_popcount(w)				pg_popcount32(w)
+#define bmw_popcount(w)				PG_POPCOUNT32(w)
 #elif BITS_PER_BITMAPWORD == 64
 #define bmw_leftmost_one_pos(w)		pg_leftmost_one_pos64(w)
 #define bmw_rightmost_one_pos(w)	pg_rightmost_one_pos64(w)
-#define bmw_popcount(w)				pg_popcount64(w)
+#define bmw_popcount(w)				PG_POPCOUNT64(w)
 #else
 #error "invalid BITS_PER_BITMAPWORD"
 #endif

@@ -419,14 +419,14 @@ visibilitymap_count(Relation rel, BlockNumber *all_visible, BlockNumber *all_fro
 		if (all_frozen == NULL)
 		{
 			for (i = 0; i < MAPSIZE / sizeof(uint64); i++)
-				nvisible += pg_popcount64(map[i] & VISIBLE_MASK64);
+				nvisible += PG_POPCOUNT64(map[i] & VISIBLE_MASK64);
 		}
 		else
 		{
 			for (i = 0; i < MAPSIZE / sizeof(uint64); i++)
 			{
-				nvisible += pg_popcount64(map[i] & VISIBLE_MASK64);
-				nfrozen += pg_popcount64(map[i] & FROZEN_MASK64);
+				nvisible += PG_POPCOUNT64(map[i] & VISIBLE_MASK64);
+				nfrozen += PG_POPCOUNT64(map[i] & FROZEN_MASK64);
 			}
 		}
 

@@ -103,9 +103,9 @@ const uint8 pg_number_of_ones[256] = {
 	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
 };
 
-static inline int pg_popcount32_slow(uint32 word);
-static inline int pg_popcount64_slow(uint64 word);
-static uint64 pg_popcount_slow(const char *buf, int bytes);
+// static inline int pg_popcount32_slow(uint32 word);
+// static inline int pg_popcount64_slow(uint64 word);
+// static uint64 pg_popcount_slow(const char *buf, int bytes);
 
 #ifdef TRY_POPCNT_FAST
 static bool pg_popcount_available(void);
@@ -119,9 +119,6 @@ static uint64 pg_popcount_fast(const char *buf, int bytes);
 int			(*pg_popcount32) (uint32 word) = pg_popcount32_choose;
 int			(*pg_popcount64) (uint64 word) = pg_popcount64_choose;
 uint64		(*pg_popcount) (const char *buf, int bytes) = pg_popcount_choose;
-#endif							/* TRY_POPCNT_FAST */
-
-#ifdef TRY_POPCNT_FAST
 
 /*
  * Return true if CPUID indicates that the POPCNT instruction is available.
@@ -148,8 +145,7 @@ pg_popcount_available(void)
  * the function pointers so that subsequent calls are routed directly to
  * the chosen implementation.
  */
-static int
-pg_popcount32_choose(uint32 word)
+static inline void set_function_pointers()
 {
 	if (pg_popcount_available())
 	{
@@ -163,45 +159,26 @@ pg_popcount32_choose(uint32 word)
 		pg_popcount64 = pg_popcount64_slow;
 		pg_popcount = pg_popcount_slow;
 	}
+}
 
+static int
+pg_popcount32_choose(uint32 word)
+{
+	set_function_pointers();
 	return pg_popcount32(word);
 }
 
 static int
 pg_popcount64_choose(uint64 word)
 {
-	if (pg_popcount_available())
-	{
-		pg_popcount32 = pg_popcount32_fast;
-		pg_popcount64 = pg_popcount64_fast;
-		pg_popcount = pg_popcount_fast;
-	}
-	else
-	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-		pg_popcount = pg_popcount_slow;
-	}
-
+	set_function_pointers();
 	return pg_popcount64(word);
 }
 
 static uint64
 pg_popcount_choose(const char *buf, int bytes)
 {
-	if (pg_popcount_available())
-	{
-		pg_popcount32 = pg_popcount32_fast;
-		pg_popcount64 = pg_popcount64_fast;
-		pg_popcount = pg_popcount_fast;
-	}
-	else
-	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-		pg_popcount = pg_popcount_slow;
-	}
-
+	set_function_pointers();
 	return pg_popcount(buf, bytes);
 }
 
@@ -243,7 +220,7 @@ __asm__ __volatile__(" popcntq %1,%0\n":"=q"(res):"rm"(word):"cc");
  * pg_popcount_fast
  *		Returns the number of 1-bits in buf
  */
-static uint64
+static inline uint64
 pg_popcount_fast(const char *buf, int bytes)
 {
 	uint64		popcnt = 0;
@@ -256,7 +233,7 @@ pg_popcount_fast(const char *buf, int bytes)
 
 		while (bytes >= 8)
 		{
-			popcnt += pg_popcount64_fast(*words++);
+			popcnt += PG_POPCOUNT64(*words++);
 			bytes -= 8;
 		}
 
@@ -270,7 +247,7 @@ pg_popcount_fast(const char *buf, int bytes)
 
 		while (bytes >= 4)
 		{
-			popcnt += pg_popcount32_fast(*words++);
+			popcnt += PG_POPCOUNT32(*words++);
 			bytes -= 4;
 		}
 
@@ -292,7 +269,7 @@ pg_popcount_fast(const char *buf, int bytes)
  * pg_popcount32_slow
  *		Return the number of 1 bits set in word
  */
-static inline int
+inline int
 pg_popcount32_slow(uint32 word)
 {
 #ifdef HAVE__BUILTIN_POPCOUNT
@@ -314,7 +291,7 @@ pg_popcount32_slow(uint32 word)
  * pg_popcount64_slow
  *		Return the number of 1 bits set in word
  */
-static inline int
+inline int
 pg_popcount64_slow(uint64 word)
 {
 #ifdef HAVE__BUILTIN_POPCOUNT
@@ -342,7 +319,7 @@ pg_popcount64_slow(uint64 word)
  * pg_popcount_slow
  *		Returns the number of 1-bits in buf
  */
-static uint64
+uint64
 pg_popcount_slow(const char *buf, int bytes)
 {
 	uint64		popcnt = 0;
@@ -383,36 +360,3 @@ pg_popcount_slow(const char *buf, int bytes)
 
 	return popcnt;
 }
-
-#ifndef TRY_POPCNT_FAST
-
-/*
- * When the POPCNT instruction is not available, there's no point in using
- * function pointers to vary the implementation between the fast and slow
- * method.  We instead just make these actual external functions when
- * TRY_POPCNT_FAST is not defined.  The compiler should be able to inline
- * the slow versions here.
- */
-int
-pg_popcount32(uint32 word)
-{
-	return pg_popcount32_slow(word);
-}
-
-int
-pg_popcount64(uint64 word)
-{
-	return pg_popcount64_slow(word);
-}
-
-/*
- * pg_popcount
- *		Returns the number of 1-bits in buf
- */
-uint64
-pg_popcount(const char *buf, int bytes)
-{
-	return pg_popcount_slow(buf, bytes);
-}
-
-#endif							/* !TRY_POPCNT_FAST */
