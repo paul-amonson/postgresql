@@ -2330,7 +2330,7 @@ plan_single_revoke(CatCList *memlist, RevokeRoleGrantAction *actions,
 	 * wouldn't work properly if such syntax were added, so assert that our
 	 * caller isn't trying to do that.
 	 */
-	Assert(pg_popcount32(popt->specified) <= 1);
+	Assert(PG_POPCOUNT32(popt->specified) <= 1);
 
 	for (i = 0; i < memlist->n_members; ++i)
 	{

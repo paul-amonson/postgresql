@@ -25,6 +25,7 @@
 int pg_popcount32_fast(uint32 word);
 int pg_popcount64_fast(uint64 word);
 uint64 pg_popcount_fast(const char *buf, int bytes);
+uint64 pg_popcount512_fast(const char *buf, int bytes);
 
 static int	pg_popcount32_choose(uint32 word);
 static int	pg_popcount64_choose(uint64 word);
@@ -54,6 +55,52 @@ pg_popcount_available(void)
 }
 
 /*
+ * Return true if CPUID indicates that the AVX512_POPCNT instruction is
+ * available. This is similar to the method above; see
+ * https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features
+ *
+ * Finally, we make sure the xgetbv result is consistent with the CPUID
+ * results.
+ */
+static bool
+pg_popcount512_available(void)
+{
+	unsigned int exx[4] = {0, 0, 0, 0};
+
+	/* Check for AVX512VPOPCNTDQ and AVX512F */
+#if defined(HAVE__GET_CPUID_COUNT)
+	__get_cpuid_count(7, 0, &exx[0], &exx[1], &exx[2], &exx[3]);
+#elif defined(HAVE__CPUIDEX)
+	__cpuidex(exx, 7, 0);
+#endif
+
+	if ((exx[2] & (0x00004000)) != 0 && (exx[1] & (0x00010000)) != 0)
+	{
+        /*
+         * CPUID succeeded, does the current running OS support the
+         * ZMM registers which are required for AVX512? This check is
+         * required to make sure an old OS on a new CPU is correctly
+         * checked or a VM hypervisor is not excluding AVX512 ZMM
+         * support in the VM; see "5.1.9 Detection of AVX Instructions"
+         * https://www.intel.com/content/www/us/en/content-details/671488/intel-64-and-ia-32-architectures-optimization-reference-manual-volume-1.html
+         */
+        uint64 xcr = 0;
+#ifdef _MSC_VER
+        uint64 highlow = _xgetbv(xcr);
+
+        return (highlow & 0xE0) != 0;
+#else
+        uint32 high;
+        uint32 low;
+
+        __asm__ __volatile__("xgetbv\t\n" : "=a"(low), "=d"(high) : "c"(xcr));
+        return (low & 0xE0) != 0;
+#endif
+    } /* POPCNT 512 */
+    return false;
+}
+
+/*
  * These functions get called on the first call to pg_popcount32 etc.
  * They detect whether we can use the asm implementations, and replace
  * the function pointers so that subsequent calls are routed directly to
@@ -61,17 +108,26 @@ pg_popcount_available(void)
  */
 static inline void set_function_pointers()
 {
-	if (pg_popcount_available())
-	{
+	if (pg_popcount512_available())
+	{   /* If POPCNT512 is available, its assume that POPCNTQ is too. */
 		pg_popcount32 = pg_popcount32_fast;
 		pg_popcount64 = pg_popcount64_fast;
-		pg_popcount = pg_popcount_fast;
+		pg_popcount = pg_popcount512_fast;
 	}
 	else
 	{
-		pg_popcount32 = pg_popcount32_slow;
-		pg_popcount64 = pg_popcount64_slow;
-		pg_popcount = pg_popcount_slow;
+		if (pg_popcount_available())
+		{
+			pg_popcount32 = pg_popcount32_fast;
+			pg_popcount64 = pg_popcount64_fast;
+			pg_popcount = pg_popcount_fast;
+		}
+		else
+		{
+			pg_popcount32 = pg_popcount32_slow;
+			pg_popcount64 = pg_popcount64_slow;
+			pg_popcount = pg_popcount_slow;
+		}
 	}
 }
 
