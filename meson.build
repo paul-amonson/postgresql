@@ -1783,6 +1783,37 @@ elif cc.links('''
 endif
 
 
+if cc.links('''
+    #include <cpuid.h>
+    int main(int arg, char **argv)
+    {
+        unsigned int exx[4] = {0, 0, 0, 0};
+        __get_cpuid_count(7, 0, &exx[0], &exx[1], &exx[2], &exx[3]);
+    }
+    ''', name: '__get_cpuid_count',
+    args: test_c_args)
+  cdata.set('HAVE__GET_CPUID_COUNT', 1)
+elif cc.links('''
+    #include <intrin.h>
+    int main(int arg, char **argv)
+    {
+        unsigned int exx[4] = {0, 0, 0, 0};
+        __cpuidex(exx, 7, 0);
+    }
+    ''', name: '__cpuidex',
+    args: test_c_args)
+  cdata.set('HAVE__CPUIDEX', 1)
+endif
+
+
+# Check for header immintrin.h
+if cc.has_header('immintrin.h',
+    include_directories: postgres_inc, args: test_c_args)
+  cdata.set('HAVE__IMMINTRIN', 1,
+            description: 'Define to 1 if you have the immintrin.h header file.')
+endif
+
+
 # Defend against clang being used on x86-32 without SSE2 enabled.  As current
 # versions of clang do not understand -fexcess-precision=standard, the use of
 # x87 floating point operations leads to problems like isinf possibly returning
@@ -2157,6 +2188,47 @@ elif host_cpu == 'ppc' or host_cpu == 'ppc64'
 endif
 
 
+
+###############################################################
+# AVX 512 POPCNT Intrinsic check
+###############################################################
+have_avx512_popcnt = false
+cflags_avx512_popcnt = []
+if host_cpu == 'x86_64'
+  test_flags = ['-mavx512vpopcntdq']
+  if host_system == 'windows'
+    test_flags = ['/arch:AVX512']
+  endif
+  prog = '''
+      #include <immintrin.h>
+      #include <stdint.h>
+      #include <stdlib.h>
+      #include <string.h>
+      void main(void)
+      {
+        const uint64_t *buf = malloc((size_t)64);
+        uint64_t popcnt = 0;
+        __m512i accumulator = _mm512_setzero_si512();
+        const __m512i v = _mm512_loadu_si512((const __m512i *)buf);
+        const __m512i p = _mm512_popcnt_epi64(v);
+        memset(buf, 0, 64);
+        accumulator = _mm512_add_epi64(accumulator, p);
+        popcnt = _mm512_reduce_add_epi64(accumulator);
+        /* return computed value, to prevent the above being optimized away */
+        return popcnt == 0;
+      }'''
+  if cc.links(prog, name: '_mm512_* methods with -mavx512vpopcntdq flag.',
+              args: test_c_args + test_flags)
+    have_avx512_popcnt = true
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cdata.set('HAVE__AVX512_POPCNT', 1)
+    cflags_avx512_popcnt = test_flags
+  else
+    have_avx512_popcnt = false
+    cdata.set('USE_AVX512_POPCNT_WITH_RUNTIME_CHECK', 1)
+    cflags_avx512_popcnt = []
+  endif # compile/link test
+endif # host_cpu check
 
 ###############################################################
 # Library / OS tests

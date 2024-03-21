@@ -306,8 +306,8 @@ extern PGDLLIMPORT uint64 (*pg_popcount) (const char *buf, int bytes);
 
 #else
 /*
- *  Use a portable implementation -- no need for a function pointer. Use
-  * inlining for small speed increase.
+ * Use a portable implementation -- no need for a function pointer. Use
+ * inlining for small speed increase.
  */
 extern int	pg_popcount32(uint32 word);
 extern int	pg_popcount64(uint64 word);
