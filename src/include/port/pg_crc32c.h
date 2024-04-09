@@ -82,6 +82,8 @@ extern pg_crc32c (*pg_comp_crc32c) (pg_crc32c crc, const void *data, size_t len)
 
 #ifdef USE_SSE42_CRC32C_WITH_RUNTIME_CHECK
 extern pg_crc32c pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len);
+// extern pg_crc32c pg_comp_crc32c_sse42_new(pg_crc32c crc, const void *data, size_t len);
+extern pg_crc32c pg_comp_crc32c_sse42_old(pg_crc32c crc, const void *data, size_t len);
 #endif
 #ifdef USE_ARMV8_CRC32C_WITH_RUNTIME_CHECK
 extern pg_crc32c pg_comp_crc32c_armv8(pg_crc32c crc, const void *data, size_t len);
