@@ -8,6 +8,20 @@
 
 PG_MODULE_MAGIC;
 
+#define CRC_DEBUG 0
+#if CRC_DEBUG == 1
+#include <stdio.h>
+void dump(int64 count, int64 len);
+void dump(int64 count, int64 len)
+{
+	static const char *format = "drive_crc32c(%ld,  %ld)\n";
+	FILE *fd = fopen("/home/paul/postgresql-fork/postgres.out", "a");
+	fprintf(fd, format, count, len);
+	fclose(fd);
+}
+#else
+#define dump(x, y)
+#endif
 
 /*
  * drive_crc32c(count int, num int) returns bigint
@@ -18,17 +32,17 @@ PG_FUNCTION_INFO_V1(drive_crc32c);
 Datum
 drive_crc32c(PG_FUNCTION_ARGS)
 {
-	int			count	= PG_GETARG_INT32(0);
-	int			num		= PG_GETARG_INT32(1);
+	int64			count	= PG_GETARG_INT64(0);
+	int64			num		= PG_GETARG_INT64(1);
 	pg_crc32c	crc;
-	const char*	data	= malloc((size_t)num); 
-	
+	const char*	data	= malloc((size_t)num);
+	dump(count, num);
 	INIT_CRC32C(crc);
 
- 	while(count--)
+	while(count--)
 	{
         INIT_CRC32C(crc);
-        COMP_CRC32C(crc, data, num);
+        pg_comp_crc32c_sse42(crc, data, num);
 		FIN_CRC32C(crc);
 	}
 
