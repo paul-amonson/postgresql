@@ -17,38 +17,9 @@
 
 #include "c.h"
 
-#include <nmmintrin.h>
+#include <immintrin.h>
 
 #include "port/pg_crc32c.h"
-
-#if USE_AVX == 1
-#include <immintrin.h>
-#include <smmintrin.h>
-#include <wmmintrin.h>
-#include <emmintrin.h>
-#endif
-
-#define CRC_DEBUG 0
-#if CRC_DEBUG == 1
-#include <stdio.h>
-void dump(const char *prefix, size_t len);
-void dump_hex(const char *prefix, size_t len);
-void dump(const char *prefix, size_t len) {
-	static const char* format="%s: %ld\n";
-	FILE* fd = fopen("/home/paul/postgresql-fork/postgres.out", "a");
-	fprintf(fd, format, prefix, len);
-	fclose(fd);
-}
-void dump_hex(const char *prefix, size_t len) {
-	static const char* format="%s: 0x%016lx\n";
-	FILE* fd = fopen("/home/paul/postgresql-fork/postgres.out", "a");
-	fprintf(fd, format, prefix, len);
-	fclose(fd);
-}
-#else
-#define dump(x,y)
-#define dump_hex(x,y)
-#endif
 
 #if USE_AVX != 1
 pg_attribute_no_sanitize_alignment()
@@ -161,8 +132,9 @@ static const uint64 k1k4[8] = {
 	0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
 	0x493c7d27, 0x00000000, 0x00000000};
 
-pg_attribute_no_sanitize_alignment() inline pg_crc32c
-	pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
+pg_attribute_no_sanitize_alignment()
+inline pg_crc32c
+pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
 {
 	const uint8 *input = (const uint8 *)data;
 	uint64 val;
@@ -188,7 +160,6 @@ pg_attribute_no_sanitize_alignment() inline pg_crc32c
 	* to 32 bytes.
 	* >>> BEGIN
 	*/
-	dump("Using AVX Code on Length", length);
 	/*
 	* There's at least one block of 256.
 	*/
@@ -207,7 +178,8 @@ pg_attribute_no_sanitize_alignment() inline pg_crc32c
 	/*
 	* Parallel fold blocks of 256, if any.
 	*/
-	while (length >= 256) {
+	while (length >= 256)
+	{
 		x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
 		x6 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
 		x7 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
@@ -252,7 +224,8 @@ pg_attribute_no_sanitize_alignment() inline pg_crc32c
 	/*
 	* Single fold blocks of 64, if any.
 	*/
-	while (length >= 64) {
+	while (length >= 64)
+	{
 		x2 = _mm512_loadu_si512((__m512i *)input);
 
 		x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
