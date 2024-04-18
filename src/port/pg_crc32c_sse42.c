@@ -13,7 +13,7 @@
  *-------------------------------------------------------------------------
  */
 
-#define USE_AVX 1
+#define USE_AVX 0
 
 #include "c.h"
 
@@ -117,42 +117,31 @@ crc32c_fallback(pg_crc32c crc, const uint8 *input, size_t length)
  * Copyright (c) 2024, Intel(r) Corporation
  * SPDX: BSD-3-Clause
  */
-#define AVX_ALIGN 32
-
-static const uint64 k1k2[8] = {
-	0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4,
-	0xb9e02b86, 0xdcb17aa4, 0xb9e02b86};
-static const uint64 k3k4[8] = {
-	0x740eef02, 0x9e4addf8, 0x740eef02, 0x9e4addf8, 0x740eef02,
-	0x9e4addf8, 0x740eef02, 0x9e4addf8};
-static const uint64 k9k10[8] = {
-	0x6992cea2, 0x0d3b6092, 0x6992cea2, 0x0d3b6092, 0x6992cea2,
-	0x0d3b6092, 0x6992cea2, 0x0d3b6092};
-static const uint64 k1k4[8] = {
-	0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
-	0x493c7d27, 0x00000000, 0x00000000};
 
 pg_attribute_no_sanitize_alignment()
 inline pg_crc32c
 pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
 {
+	static const uint64 k1k2[8] = {
+		0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4,
+		0xb9e02b86, 0xdcb17aa4, 0xb9e02b86};
+	static const uint64 k3k4[8] = {
+		0x740eef02, 0x9e4addf8, 0x740eef02, 0x9e4addf8, 0x740eef02,
+		0x9e4addf8, 0x740eef02, 0x9e4addf8};
+	static const uint64 k9k10[8] = {
+		0x6992cea2, 0x0d3b6092, 0x6992cea2, 0x0d3b6092, 0x6992cea2,
+		0x0d3b6092, 0x6992cea2, 0x0d3b6092};
+	static const uint64 k1k4[8] = {
+		0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
+		0x493c7d27, 0x00000000, 0x00000000};
 	const uint8 *input = (const uint8 *)data;
 	uint64 val;
 	__m512i x0, x1, x2, x3, x4, x5, x6, x7, x8, y5, y6, y7, y8;
 	__m128i a1, a2;
 
-	if (length < 288)
+	if (length < 256)
 	{
 		return crc32c_fallback(crc, input, length);
-	}
-
-	/* Leading bytes need alignment? */
-	if ((uint64)input % AVX_ALIGN != 0)
-	{
-		size_t slop = AVX_ALIGN - ((uint64)input % AVX_ALIGN);
-		crc = crc32c_fallback(crc, input, slop);
-		input += slop;
-		length -= slop;
 	}
 
 	/*
