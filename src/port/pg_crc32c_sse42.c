@@ -83,16 +83,23 @@ pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len)
  * the begin address.
  */
 pg_attribute_no_sanitize_alignment()
- __always_inline
+inline
 static
 pg_crc32c
 crc32c_fallback(pg_crc32c crc, const uint8 *input, size_t length)
 {
-	const unsigned char *pend = input + length;
+	const uint8 *pend = input + length;
 	while (input + 8 <= pend)
 	{
 		crc = (uint32) _mm_crc32_u64(crc, *((const uint64 *) input));
 		input += 8;
+	}
+
+	/* Process remaining full four bytes if any */
+	if (input + 4 <= pend)
+	{
+		crc = _mm_crc32_u32(crc, *((const unsigned int *) input));
+		input += 4;
 	}
 
 	/* Process any remaining bytes one at a time. */
