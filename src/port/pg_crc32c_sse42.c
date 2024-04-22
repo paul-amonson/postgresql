@@ -13,7 +13,7 @@
  *-------------------------------------------------------------------------
  */
 
-#define USE_AVX 0
+#define USE_AVX 1
 
 #include "c.h"
 
@@ -21,11 +21,14 @@
 
 #include "port/pg_crc32c.h"
 
-#if USE_AVX != 1
 pg_attribute_no_sanitize_alignment()
-inline 
-pg_crc32c
+#if USE_AVX == 0
+inline pg_crc32c
 pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len)
+#else
+inline static pg_crc32c
+pg_comp_crc32c_sse42_old(pg_crc32c crc, const void *data, size_t len)
+#endif
 {
 	const unsigned char *p = data;
 	const unsigned char *pend = p + len;
@@ -72,44 +75,8 @@ pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len)
 
 	return crc;
 }
-#endif
 
 #if USE_AVX == 1
-/*
- * Process eight bytes of data at a time.
- *
- * NB: We do unaligned accesses here. The Intel architecture allows that,
- * and performance testing didn't show any performance gain from aligning
- * the begin address.
- */
-pg_attribute_no_sanitize_alignment()
-inline
-static
-pg_crc32c
-crc32c_fallback(pg_crc32c crc, const uint8 *input, size_t length)
-{
-	const uint8 *pend = input + length;
-	while (input + 8 <= pend)
-	{
-		crc = (uint32) _mm_crc32_u64(crc, *((const uint64 *) input));
-		input += 8;
-	}
-
-	/* Process remaining full four bytes if any */
-	if (input + 4 <= pend)
-	{
-		crc = _mm_crc32_u32(crc, *((const unsigned int *) input));
-		input += 4;
-	}
-
-	/* Process any remaining bytes one at a time. */
-	while (input < pend)
-	{
-		crc = _mm_crc32_u8(crc, *(input++));
-	}
-	return crc;
-}
-
 /*******************************************************************
  * pg_crc32c_avx512(): compute the crc32c of the buffer, where the
  * buffer length must be at least 256, and a multiple of 64. Based
@@ -119,37 +86,33 @@ crc32c_fallback(pg_crc32c crc, const uint8 *input, size_t length)
  * Instruction"
  *  V. Gopal, E. Ozturk, et al., 2009,
  *  https://www.researchgate.net/publication/263424619_Fast_CRC_computation#full-text
- * 
+ *
  * This Function:
  * Copyright (c) 2024, Intel(r) Corporation
  * SPDX: BSD-3-Clause
  */
 
+static const uint64 k1k2[8] = {
+	0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4,
+	0xb9e02b86, 0xdcb17aa4, 0xb9e02b86};
+static const uint64 k3k4[8] = {
+	0x740eef02, 0x9e4addf8, 0x740eef02, 0x9e4addf8, 0x740eef02,
+	0x9e4addf8, 0x740eef02, 0x9e4addf8};
+static const uint64 k9k10[8] = {
+	0x6992cea2, 0x0d3b6092, 0x6992cea2, 0x0d3b6092, 0x6992cea2,
+	0x0d3b6092, 0x6992cea2, 0x0d3b6092};
+static const uint64 k1k4[8] = {
+	0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
+	0x493c7d27, 0x00000000, 0x00000000};
+	
 pg_attribute_no_sanitize_alignment()
-inline pg_crc32c
-pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
+static pg_crc32c
+pg_comp_crc32c_avx512(pg_crc32c crc, const void *data, size_t length)
 {
-	static const uint64 k1k2[8] = {
-		0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4, 0xb9e02b86, 0xdcb17aa4,
-		0xb9e02b86, 0xdcb17aa4, 0xb9e02b86};
-	static const uint64 k3k4[8] = {
-		0x740eef02, 0x9e4addf8, 0x740eef02, 0x9e4addf8, 0x740eef02,
-		0x9e4addf8, 0x740eef02, 0x9e4addf8};
-	static const uint64 k9k10[8] = {
-		0x6992cea2, 0x0d3b6092, 0x6992cea2, 0x0d3b6092, 0x6992cea2,
-		0x0d3b6092, 0x6992cea2, 0x0d3b6092};
-	static const uint64 k1k4[8] = {
-		0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
-		0x493c7d27, 0x00000000, 0x00000000};
 	const uint8 *input = (const uint8 *)data;
 	uint64 val;
 	__m512i x0, x1, x2, x3, x4, x5, x6, x7, x8, y5, y6, y7, y8;
 	__m128i a1, a2;
-
-	if (length < 256)
-	{
-		return crc32c_fallback(crc, input, length);
-	}
 
 	/*
 	* AVX-512 Optimized crc32c algorithm with mimimum of 256 bytes aligned
@@ -261,6 +224,20 @@ pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
 	/*
 	 * Finish any remaining bytes.
 	 */
-	return crc32c_fallback(crc, input, length);
+	return pg_comp_crc32c_sse42_old(crc, input, length);
+}
+
+pg_attribute_no_sanitize_alignment()
+inline pg_crc32c
+pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len)
+{
+	if (len < 256)
+	{
+		return pg_comp_crc32c_sse42_old(crc, data, len);
+	}
+	else
+	{
+		return pg_comp_crc32c_avx512(crc, data, len);
+	}
 }
 #endif
