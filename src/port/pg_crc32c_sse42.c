@@ -104,140 +104,128 @@ static const uint64 k9k10[8] = {
 static const uint64 k1k4[8] = {
 	0x1c291d04, 0xddc0152b, 0x3da6d0cb, 0xba4fc28e, 0xf20c0dfe,
 	0x493c7d27, 0x00000000, 0x00000000};
-	
+
 pg_attribute_no_sanitize_alignment()
-static pg_crc32c
-pg_comp_crc32c_avx512(pg_crc32c crc, const void *data, size_t length)
+inline pg_crc32c
+pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t length)
 {
 	const uint8 *input = (const uint8 *)data;
-	uint64 val;
-	__m512i x0, x1, x2, x3, x4, x5, x6, x7, x8, y5, y6, y7, y8;
-	__m128i a1, a2;
-
-	/*
-	* AVX-512 Optimized crc32c algorithm with mimimum of 256 bytes aligned
-	* to 32 bytes.
-	* >>> BEGIN
-	*/
-	/*
-	* There's at least one block of 256.
-	*/
-	x1 = _mm512_loadu_si512((__m512i *)(input + 0x00));
-	x2 = _mm512_loadu_si512((__m512i *)(input + 0x40));
-	x3 = _mm512_loadu_si512((__m512i *)(input + 0x80));
-	x4 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
-
-	x1 = _mm512_xor_si512(x1, _mm512_castsi128_si512(_mm_cvtsi32_si128(crc)));
-
-	x0 = _mm512_load_si512((__m512i *)k1k2);
-
-	input += 256;
-	length -= 256;
-
-	/*
-	* Parallel fold blocks of 256, if any.
-	*/
-	while (length >= 256)
+	if (length >= 256)
 	{
-		x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
-		x6 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
-		x7 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
-		x8 = _mm512_clmulepi64_epi128(x4, x0, 0x00);
+		uint64 val;
+		__m512i x0, x1, x2, x3, x4, x5, x6, x7, x8, y5, y6, y7, y8;
+		__m128i a1, a2;
 
-		x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
-		x2 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
-		x3 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
-		x4 = _mm512_clmulepi64_epi128(x4, x0, 0x11);
+		/*
+		* AVX-512 Optimized crc32c algorithm with mimimum of 256 bytes aligned
+		* to 32 bytes.
+		* >>> BEGIN
+		*/
+		/*
+		* There's at least one block of 256.
+		*/
+		x1 = _mm512_loadu_si512((__m512i *)(input + 0x00));
+		x2 = _mm512_loadu_si512((__m512i *)(input + 0x40));
+		x3 = _mm512_loadu_si512((__m512i *)(input + 0x80));
+		x4 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
 
-		y5 = _mm512_loadu_si512((__m512i *)(input + 0x00));
-		y6 = _mm512_loadu_si512((__m512i *)(input + 0x40));
-		y7 = _mm512_loadu_si512((__m512i *)(input + 0x80));
-		y8 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
+		x1 = _mm512_xor_si512(x1, _mm512_castsi128_si512(_mm_cvtsi32_si128(crc)));
 
-		x1 = _mm512_ternarylogic_epi64(x1, x5, y5, 0x96);
-		x2 = _mm512_ternarylogic_epi64(x2, x6, y6, 0x96);
-		x3 = _mm512_ternarylogic_epi64(x3, x7, y7, 0x96);
-		x4 = _mm512_ternarylogic_epi64(x4, x8, y8, 0x96);
+		x0 = _mm512_load_si512((__m512i *)k1k2);
 
 		input += 256;
 		length -= 256;
-	}
 
-	/*
-	* Fold 256 bytes into 64 bytes.
-	*/
-	x0 = _mm512_load_si512((__m512i *)k9k10);
-	x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
-	x6 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
-	x3 = _mm512_ternarylogic_epi64(x3, x5, x6, 0x96);
+		/*
+		* Parallel fold blocks of 256, if any.
+		*/
+		while (length >= 256)
+		{
+			x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
+			x6 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
+			x7 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
+			x8 = _mm512_clmulepi64_epi128(x4, x0, 0x00);
 
-	x7 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
-	x8 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
-	x4 = _mm512_ternarylogic_epi64(x4, x7, x8, 0x96);
+			x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
+			x2 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
+			x3 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
+			x4 = _mm512_clmulepi64_epi128(x4, x0, 0x11);
 
-	x0 = _mm512_load_si512((__m512i *)k3k4);
-	y5 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
-	y6 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
-	x1 = _mm512_ternarylogic_epi64(x4, y5, y6, 0x96);
+			y5 = _mm512_loadu_si512((__m512i *)(input + 0x00));
+			y6 = _mm512_loadu_si512((__m512i *)(input + 0x40));
+			y7 = _mm512_loadu_si512((__m512i *)(input + 0x80));
+			y8 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
 
-	/*
-	* Single fold blocks of 64, if any.
-	*/
-	while (length >= 64)
-	{
-		x2 = _mm512_loadu_si512((__m512i *)input);
+			x1 = _mm512_ternarylogic_epi64(x1, x5, y5, 0x96);
+			x2 = _mm512_ternarylogic_epi64(x2, x6, y6, 0x96);
+			x3 = _mm512_ternarylogic_epi64(x3, x7, y7, 0x96);
+			x4 = _mm512_ternarylogic_epi64(x4, x8, y8, 0x96);
 
+			input += 256;
+			length -= 256;
+		}
+
+		/*
+		* Fold 256 bytes into 64 bytes.
+		*/
+		x0 = _mm512_load_si512((__m512i *)k9k10);
+		x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
+		x6 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
+		x3 = _mm512_ternarylogic_epi64(x3, x5, x6, 0x96);
+
+		x7 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
+		x8 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
+		x4 = _mm512_ternarylogic_epi64(x4, x7, x8, 0x96);
+
+		x0 = _mm512_load_si512((__m512i *)k3k4);
+		y5 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
+		y6 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
+		x1 = _mm512_ternarylogic_epi64(x4, y5, y6, 0x96);
+
+		/*
+		* Single fold blocks of 64, if any.
+		*/
+		while (length >= 64)
+		{
+			x2 = _mm512_loadu_si512((__m512i *)input);
+
+			x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
+			x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
+			x1 = _mm512_ternarylogic_epi64(x1, x2, x5, 0x96);
+
+			input += 64;
+			length -= 64;
+		}
+
+		/*
+		* Fold 512-bits to 128-bits.
+		*/
+		x0 = _mm512_loadu_si512((__m512i *)k1k4);
+
+		a2 = _mm512_extracti32x4_epi32(x1, 3);
 		x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
 		x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
-		x1 = _mm512_ternarylogic_epi64(x1, x2, x5, 0x96);
+		x1 = _mm512_ternarylogic_epi64(x1, x5, _mm512_castsi128_si512(a2), 0x96);
 
-		input += 64;
-		length -= 64;
+		x0 = _mm512_shuffle_i64x2(x1, x1, 0x4E);
+		x0 = _mm512_xor_epi64(x1, x0);
+		a1 = _mm512_extracti32x4_epi32(x0, 1);
+		a1 = _mm_xor_epi64(a1, _mm512_castsi512_si128(x0));
+
+		/*
+		* Fold 128-bits to 32-bits.
+		*/
+		val = _mm_crc32_u64(0, _mm_extract_epi64(a1, 0));
+		crc = (uint32_t) _mm_crc32_u64(val, _mm_extract_epi64(a1, 1));
+		/*
+		* AVX-512 Optimized crc32c algorithm with mimimum of 256 bytes aligned
+		* to 32 bytes.
+		* <<< END
+		******************************************************************/
 	}
-
-	/*
-	* Fold 512-bits to 128-bits.
-	*/
-	x0 = _mm512_loadu_si512((__m512i *)k1k4);
-
-	a2 = _mm512_extracti32x4_epi32(x1, 3);
-	x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
-	x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
-	x1 = _mm512_ternarylogic_epi64(x1, x5, _mm512_castsi128_si512(a2), 0x96);
-
-	x0 = _mm512_shuffle_i64x2(x1, x1, 0x4E);
-	x0 = _mm512_xor_epi64(x1, x0);
-	a1 = _mm512_extracti32x4_epi32(x0, 1);
-	a1 = _mm_xor_epi64(a1, _mm512_castsi512_si128(x0));
-
-	/*
-	* Fold 128-bits to 32-bits.
-	*/
-	val = _mm_crc32_u64(0, _mm_extract_epi64(a1, 0));
-	crc = (uint32_t) _mm_crc32_u64(val, _mm_extract_epi64(a1, 1));
-	/*
-	* AVX-512 Optimized crc32c algorithm with mimimum of 256 bytes aligned
-	* to 32 bytes.
-	* <<< END
-	******************************************************************/
-
 	/*
 	 * Finish any remaining bytes.
 	 */
 	return pg_comp_crc32c_sse42_old(crc, input, length);
-}
-
-pg_attribute_no_sanitize_alignment()
-inline pg_crc32c
-pg_comp_crc32c_sse42(pg_crc32c crc, const void *data, size_t len)
-{
-	if (len < 256)
-	{
-		return pg_comp_crc32c_sse42_old(crc, data, len);
-	}
-	else
-	{
-		return pg_comp_crc32c_avx512(crc, data, len);
-	}
 }
 #endif
