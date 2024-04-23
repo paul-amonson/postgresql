@@ -24,7 +24,6 @@ drive_crc32c(PG_FUNCTION_ARGS)
 
 	while(count--)
 	{
-		memset((void*)data, count, num);
 		INIT_CRC32C(crc);
 		crc = pg_comp_crc32c_sse42(crc, data, num);
 		FIN_CRC32C(crc);
