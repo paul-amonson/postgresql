@@ -6,8 +6,7 @@ DATA = test_crc32c--1.0.sql
 
 first: all
 
-# needed?
-# test_crc32c.o: test_crc32c.c
+test_crc32c.o: CFLAGS+=-O0 -g
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
