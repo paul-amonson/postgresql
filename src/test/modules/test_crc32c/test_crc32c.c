@@ -21,9 +21,12 @@ drive_crc32c(PG_FUNCTION_ARGS)
 	int64			num		= PG_GETARG_INT64(1);
 	pg_crc32c		crc;
 	const char*		data	= malloc((size_t)num);
+	
+	INIT_CRC32C(crc);
 
 	while(count--)
 	{
+		memset((void*)data, count, (size_t)Min(16,num));
 		INIT_CRC32C(crc);
 		crc = pg_comp_crc32c_sse42(crc, data, num);
 		FIN_CRC32C(crc);
