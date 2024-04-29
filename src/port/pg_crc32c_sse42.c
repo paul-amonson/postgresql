@@ -13,7 +13,7 @@
  *-------------------------------------------------------------------------
  */
 
-#define USE_AVX 1
+#define USE_AVX 0
 #define EXCLUDE_AVX_BLOCK 0
 
 #include "c.h"
