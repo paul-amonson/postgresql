@@ -154,6 +154,22 @@ avx512vl_available(void)
 }
 
 /*
+ * Does XGETBV say the ZMM registers are enabled?
+ *
+ * NB: Caller is responsible for verifying that xsave_available() returns true
+ * before calling this.
+ */
+static inline bool
+zmm_regs_available(void)
+{
+#ifdef HAVE_XSAVE_INTRINSICS
+	return (_xgetbv(0) & 0xe6) == 0xe6;
+#else
+	return false;
+#endif
+}
+
+/*
  * Returns true if the CPU supports the instructions required for the AVX-512
  * pg_crc32c implementation.
  */
@@ -164,7 +180,7 @@ pg_crc32c_avx512_available(void)
 {
 	return sse42_available() && osxsave_available() &&
 		   avx512f_available() && vpclmulqdq_available() &&
-		   avx512vl_available();
+		   avx512vl_available() && zmm_regs_available();
 }
 
 /*

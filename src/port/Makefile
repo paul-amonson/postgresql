@@ -98,6 +98,11 @@ pg_crc32c_armv8.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8_shlib.o: CFLAGS+=$(CFLAGS_CRC)
 pg_crc32c_armv8_srv.o: CFLAGS+=$(CFLAGS_CRC)
 
+# all versions of pg_crc32c_avx512_choose.o need CFLAGS_XSAVE
+pg_crc32c_avx512_choose.o: CFLAGS+=$(CFLAGS_XSAVE)
+pg_crc32c_avx512_choose_shlib.o: CFLAGS+=$(CFLAGS_XSAVE)
+pg_crc32c_avx512_choose_srv.o: CFLAGS+=$(CFLAGS_XSAVE)
+
 # all versions of pg_popcount_avx512_choose.o need CFLAGS_XSAVE
 pg_popcount_avx512_choose.o: CFLAGS+=$(CFLAGS_XSAVE)
 pg_popcount_avx512_choose_shlib.o: CFLAGS+=$(CFLAGS_XSAVE)
