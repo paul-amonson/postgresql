@@ -5,7 +5,6 @@
  *
  * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
- * Portions Copyright (c) 2024, Intel(r) Corporation
  *
  * IDENTIFICATION
  *	  src/port/pg_crc32c_avx512.c
@@ -71,16 +70,36 @@ crc32c_fallback(pg_crc32c crc, const uint8 *p, size_t length)
  *
  * "Fast CRC Computation for Generic Polynomials Using PCLMULQDQ
  * Instruction"
- *  V. Gopal, E. Ozturk, et al., 2009,
- *  https://www.researchgate.net/publication/263424619_Fast_CRC_computation#full-text
+ *  V. Gopal, E. Ozturk, et al., 2009
  *
- * This Function:
- * Copyright 2017 The Chromium Authors
- * Copyright (c) 2024, Intel(r) Corporation
+ * For This Function:
+ * Copyright 2015 The Chromium Authors
  *
- * Use of this source code is governed by a BSD-style license that can be
- * found in the Chromium source repository LICENSE file.
- * https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ *    * Neither the name of Google LLC nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 pg_attribute_no_sanitize_alignment()
 inline
@@ -112,48 +131,48 @@ pg_comp_crc32c_avx512(pg_crc32c crc, const void *data, size_t length)
 		 * to 32 bytes.
 		 * >>> BEGIN
 		 */
-		/*
-		 * There's at least one block of 256.
-		 */
-		x1 = _mm512_loadu_si512((__m512i *)(input + 0x00));
-		x2 = _mm512_loadu_si512((__m512i *)(input + 0x40));
-		x3 = _mm512_loadu_si512((__m512i *)(input + 0x80));
-		x4 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
+/*
+ * There's at least one block of 256.
+ */
+x1 = _mm512_loadu_si512((__m512i *)(input + 0x00));
+x2 = _mm512_loadu_si512((__m512i *)(input + 0x40));
+x3 = _mm512_loadu_si512((__m512i *)(input + 0x80));
+x4 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
 
-		x1 = _mm512_xor_si512(x1, _mm512_castsi128_si512(_mm_cvtsi32_si128(crc)));
+x1 = _mm512_xor_si512(x1, _mm512_castsi128_si512(_mm_cvtsi32_si128(crc)));
 
-		x0 = _mm512_load_si512((__m512i *)k1k2);
+x0 = _mm512_load_si512((__m512i *)k1k2);
 
-		input += 256;
-		length -= 256;
+input += 256;
+length -= 256;
 
-		/*
-		 * Parallel fold blocks of 256, if any.
-		 */
-		while (length >= 256)
-		{
-			x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
-			x6 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
-			x7 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
-			x8 = _mm512_clmulepi64_epi128(x4, x0, 0x00);
+/*
+ * Parallel fold blocks of 256, if any.
+ */
+while (length >= 256)
+{
+	x5 = _mm512_clmulepi64_epi128(x1, x0, 0x00);
+	x6 = _mm512_clmulepi64_epi128(x2, x0, 0x00);
+	x7 = _mm512_clmulepi64_epi128(x3, x0, 0x00);
+	x8 = _mm512_clmulepi64_epi128(x4, x0, 0x00);
 
-			x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
-			x2 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
-			x3 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
-			x4 = _mm512_clmulepi64_epi128(x4, x0, 0x11);
+	x1 = _mm512_clmulepi64_epi128(x1, x0, 0x11);
+	x2 = _mm512_clmulepi64_epi128(x2, x0, 0x11);
+	x3 = _mm512_clmulepi64_epi128(x3, x0, 0x11);
+	x4 = _mm512_clmulepi64_epi128(x4, x0, 0x11);
 
-			y5 = _mm512_loadu_si512((__m512i *)(input + 0x00));
-			y6 = _mm512_loadu_si512((__m512i *)(input + 0x40));
-			y7 = _mm512_loadu_si512((__m512i *)(input + 0x80));
-			y8 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
+	y5 = _mm512_loadu_si512((__m512i *)(input + 0x00));
+	y6 = _mm512_loadu_si512((__m512i *)(input + 0x40));
+	y7 = _mm512_loadu_si512((__m512i *)(input + 0x80));
+	y8 = _mm512_loadu_si512((__m512i *)(input + 0xC0));
 
-			x1 = _mm512_ternarylogic_epi64(x1, x5, y5, 0x96);
-			x2 = _mm512_ternarylogic_epi64(x2, x6, y6, 0x96);
-			x3 = _mm512_ternarylogic_epi64(x3, x7, y7, 0x96);
-			x4 = _mm512_ternarylogic_epi64(x4, x8, y8, 0x96);
+	x1 = _mm512_ternarylogic_epi64(x1, x5, y5, 0x96);
+	x2 = _mm512_ternarylogic_epi64(x2, x6, y6, 0x96);
+	x3 = _mm512_ternarylogic_epi64(x3, x7, y7, 0x96);
+	x4 = _mm512_ternarylogic_epi64(x4, x8, y8, 0x96);
 
-			input += 256;
-			length -= 256;
+	input += 256;
+	length -= 256;
 		}
 
 		/*
