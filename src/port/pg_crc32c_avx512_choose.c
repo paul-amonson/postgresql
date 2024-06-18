@@ -10,7 +10,6 @@
  *
  * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
- * Portions Copyright (c) 2024, Intel(r) Corp.
  *
  *
  * IDENTIFICATION
@@ -36,6 +35,10 @@
 #include "port/pg_crc32c.h"
 
 typedef unsigned int exx_t;
+#define EAX 0
+#define EBX 1
+#define ECX 2
+#define EDX 3
 
 /*
  * Helper function.
@@ -94,7 +97,7 @@ sse42_available(void)
 	exx_t exx[4] = {0, 0, 0, 0};
 
 	pg_getcpuid(1, exx);
-	return is_bit_set(exx[2], 20); /* sse4.2 */
+	return is_bit_set(exx[ECX], 20); /* sse4.2 */
 }
 
 /*
@@ -108,7 +111,7 @@ osxsave_available(void)
 	exx_t exx[4] = {0, 0, 0, 0};
 
 	pg_getcpuid(1, exx);
-	return is_bit_set(exx[2], 27); /* osxsave */
+	return is_bit_set(exx[ECX], 27); /* osxsave */
 }
 
 /*
@@ -122,7 +125,7 @@ avx512f_available(void)
 	exx_t exx[4] = {0, 0, 0, 0};
 
 	pg_getcpuidex(7, 0, exx);
-	return is_bit_set(exx[1], 16); /* avx512-f */
+	return is_bit_set(exx[EBX], 16); /* avx512-f */
 }
 
 /*
@@ -136,7 +139,7 @@ vpclmulqdq_available(void)
 	exx_t exx[4] = {0, 0, 0, 0};
 
 	pg_getcpuidex(7, 0, exx);
-	return is_bit_set(exx[1], 10); /* vpclmulqdq */
+	return is_bit_set(exx[ECX], 10); /* vpclmulqdq */
 }
 
 /*
@@ -150,7 +153,7 @@ avx512vl_available(void)
 	exx_t exx[4] = {0, 0, 0, 0};
 
 	pg_getcpuidex(7, 0, exx);
-	return is_bit_set(exx[1], 31); /* avx512-vl */
+	return is_bit_set(exx[EBX], 31); /* avx512-vl */
 }
 
 /*
